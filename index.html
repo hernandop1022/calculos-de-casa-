@@ -776,7 +776,11 @@ function renderAhorros() {
       }
       rows += '<div class="ahmc"><div class="ahml">' + showMeses[j].slice(0, 3) + '</div><div class="ahmv">' + (found !== null ? fmt(found) : '—') + '</div></div>';
     }
-    rows += '</div><button class="xbtn" onclick="deleteAhorro(\'' + a.id + '\')">✕</button></div>';
+    rows += '</div>' +
+      '<div style="display:flex;gap:6px;flex-shrink:0">' +
+      '<button class="arb" style="font-size:11px;padding:3px 8px" onclick="openAddAhorro(\'' + a.name.replace(/'/g, "\\'") + '\')">+ Registro</button>' +
+      '<button class="xbtn" onclick="deleteAhorro(\'' + a.id + '\')">✕</button>' +
+      '</div></div>';
   }
   document.getElementById('ahl').innerHTML = rows || '<div style="color:var(--mu);font-size:14px;padding:10px 0">Sin bolsillos registrados</div>';
 
@@ -934,7 +938,11 @@ function openMPicker() {
   var keys = Object.keys(months);
   var html = '';
   for (var i = 0; i < keys.length; i++) {
-    html += '<div class="mo2 ' + (keys[i] === cur ? 'cur' : '') + '" onclick="selectMonth(\'' + keys[i] + '\')">' + keys[i] + '</div>';
+    var m = keys[i];
+    html += '<div style="position:relative">' +
+      '<div class="mo2 ' + (m === cur ? 'cur' : '') + '" onclick="selectMonth(\'' + m + '\')" style="padding-right:36px">' + m + '</div>' +
+      '<button onclick="renameMonth(\'' + m + '\')" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:transparent;border:none;font-size:15px;cursor:pointer;color:var(--mu)" aria-label="Renombrar">✏️</button>' +
+      '</div>';
   }
   html += '<div class="monew" onclick="showNewMonthInput()">+ Nuevo mes</div>';
   document.getElementById('mgrid').innerHTML = html;
@@ -956,6 +964,19 @@ function createMonth() {
   selectMonth(name);
 }
 
+function renameMonth(oldName) {
+  var newName = prompt('Nuevo nombre para "' + oldName + '":', oldName);
+  if (!newName || newName.trim() === '' || newName === oldName) return;
+  newName = newName.trim();
+  if (months[newName]) { alert('Ya existe un mes con ese nombre.'); return; }
+  // copy data under new key, delete old
+  months[newName] = months[oldName];
+  delete months[oldName];
+  if (cur === oldName) cur = newName;
+  saveMonths(); lsSet(CK, cur);
+  openMPicker(); // refresh picker
+}
+
 // ── ADD GASTO ──
 function openAddGasto() { document.getElementById('ov-ag').classList.add('on'); setTimeout(function() { document.getElementById('ag-n').focus(); }, 100); }
 function saveGasto() {
@@ -972,7 +993,18 @@ function saveGasto() {
 }
 
 // ── ADD AHORRO ──
-function openAddAhorro() { document.getElementById('ov-aa').classList.add('on'); setTimeout(function() { document.getElementById('aa-n').focus(); }, 100); }
+function openAddAhorro(prefillName) {
+  document.getElementById('ov-aa').classList.add('on');
+  setTimeout(function() {
+    if (prefillName) {
+      document.getElementById('aa-n').value = prefillName;
+      document.getElementById('aa-mes').focus();
+    } else {
+      document.getElementById('aa-n').value = '';
+      document.getElementById('aa-n').focus();
+    }
+  }, 100);
+}
 function saveAhorro() {
   var name = document.getElementById('aa-n').value.trim();
   var mes  = document.getElementById('aa-mes').value.trim();
