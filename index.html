@@ -241,6 +241,11 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--tx);min-h
       </div>
     </div>
     <div class="scard">
+      <div class="sct"><span>Evolución de deudas</span></div>
+      <div style="position:relative;width:100%;height:200px"><canvas id="ch-deuda-evol" role="img" aria-label="Evolución de deudas en el tiempo"></canvas></div>
+      <div id="deuda-evol-legend" style="display:flex;flex-wrap:wrap;gap:10px;margin-top:12px"></div>
+    </div>
+    <div class="scard">
       <div class="sct"><span>Lo que debo</span><button class="arb" onclick="openAddDeuda('debo')">+ Agregar</button></div>
       <div id="dl-debo"></div>
     </div>
@@ -384,6 +389,26 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--tx);min-h
     <div class="mbtns">
       <button class="bcx" onclick="closeModal('ov-di')">Cancelar</button>
       <button class="bsv" onclick="saveDiario()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: Registrar cambio en deuda -->
+<div class="ov" id="ov-ab" onclick="closeModal('ov-ab',event)">
+  <div class="mo">
+    <div class="mh"></div>
+    <h3 id="ab-title">Registrar cambio</h3>
+    <div style="background:var(--sf2);border-radius:12px;padding:12px 14px;margin-bottom:14px">
+      <div style="font-size:11px;color:var(--mu);margin-bottom:4px">Valor actual registrado</div>
+      <div style="font-size:20px;font-weight:600;font-family:'DM Mono',monospace;color:var(--re)" id="ab-saldo">$0</div>
+    </div>
+    <div class="fi"><label>Descripción</label><input id="ab-n" type="text" placeholder="Ej: Abono quincena, interés sumado..."></div>
+    <div class="fi"><label>Nuevo valor de la deuda (COP)</label><input id="ab-m" type="number" placeholder="0" inputmode="numeric"></div>
+    <input type="hidden" id="ab-tipo">
+    <input type="hidden" id="ab-did">
+    <div class="mbtns">
+      <button class="bcx" onclick="closeModal('ov-ab')">Cancelar</button>
+      <button class="bsv" onclick="saveAbono()">Guardar</button>
     </div>
   </div>
 </div>
@@ -768,7 +793,15 @@ function renderAhorros() {
   var rows = '';
   for (var i = 0; i < ahorros.length; i++) {
     var a = ahorros[i];
-    rows += '<div class="ahr"><div class="ahn" style="color:' + AH_COLORS[i % AH_COLORS.length] + '">' + a.name + '</div><div class="ahm">';
+    var lastTwo = a.entries.slice(-2);
+    var delta = lastTwo.length === 2 ? lastTwo[1].val - lastTwo[0].val : null;
+    var deltaStr = delta === null ? '' : (delta > 0
+      ? '<span style="font-size:11px;color:var(--gr);margin-left:6px">▲ ' + fmt(delta) + '</span>'
+      : delta < 0
+        ? '<span style="font-size:11px;color:var(--re);margin-left:6px">▼ ' + fmt(Math.abs(delta)) + '</span>'
+        : '<span style="font-size:11px;color:var(--mu);margin-left:6px">sin cambio</span>');
+    rows += '<div class="ahr"><div class="ahn" style="display:flex;flex-direction:column">' +
+      '<span style="color:' + AH_COLORS[i % AH_COLORS.length] + '">' + a.name + '</span>' + deltaStr + '</div><div class="ahm">';
     for (var j = 0; j < showMeses.length; j++) {
       var found = null;
       for (var k = 0; k < a.entries.length; k++) {
@@ -797,10 +830,17 @@ function deleteAhorro(id) {
 // ── DEUDAS ──
 var D_COLORS = ['#ff5c5c','#f5c842','#b07fff','#4f8ef7','#ffaa3b','#3dd68c'];
 var chDebo = null;
+var chDeudaEvol = null;
+
+// Last recorded value of deuda (original if no cambios)
+function deudaValActual(d) {
+  if (d.abonos && d.abonos.length) return d.abonos[d.abonos.length - 1].m;
+  return d.m;
+}
 
 function renderDeudas() {
-  var td = deudas.debo.filter(function(d) { return !d.paid; }).reduce(function(s, d) { return s + d.m; }, 0);
-  var tm = deudas.deben.filter(function(d) { return !d.paid; }).reduce(function(s, d) { return s + d.m; }, 0);
+  var td = deudas.debo.filter(function(d) { return !d.paid; }).reduce(function(s, d) { return s + deudaValActual(d); }, 0);
+  var tm = deudas.deben.filter(function(d) { return !d.paid; }).reduce(function(s, d) { return s + deudaValActual(d); }, 0);
   var ca = deudas.deben.filter(function(d) { return d.paid; }).reduce(function(s, d) { return s + d.m; }, 0);
 
   document.getElementById('dsum').innerHTML =
@@ -808,6 +848,7 @@ function renderDeudas() {
     '<div class="sc"><div class="sl">Me deben</div><div class="sv g">' + fmt(tm) + '</div></div>' +
     '<div class="sc"><div class="sl">Cartera muerta</div><div class="sv" style="color:var(--mu)">' + fmt(ca) + '</div></div>';
 
+  // Donut
   var pending = deudas.debo.filter(function(d) { return !d.paid; });
   var ctx = document.getElementById('ch-debo');
   if (chDebo) { chDebo.destroy(); chDebo = null; }
@@ -816,7 +857,7 @@ function renderDeudas() {
       type: 'doughnut',
       data: {
         labels: pending.map(function(d) { return d.n; }),
-        datasets: [{data: pending.map(function(d) { return d.m; }), backgroundColor: D_COLORS.slice(0, pending.length), borderWidth: 0, hoverOffset: 4}]
+        datasets: [{data: pending.map(function(d) { return deudaValActual(d); }), backgroundColor: D_COLORS.slice(0, pending.length), borderWidth: 0, hoverOffset: 4}]
       },
       options: {
         responsive: true, maintainAspectRatio: false, cutout: '68%',
@@ -827,12 +868,64 @@ function renderDeudas() {
 
   var legend = '';
   for (var i = 0; i < pending.length; i++) {
+    var val = deudaValActual(pending[i]);
     legend += '<div style="display:flex;align-items:center;gap:6px">' +
       '<span style="width:8px;height:8px;border-radius:50%;background:' + D_COLORS[i % D_COLORS.length] + ';flex-shrink:0"></span>' +
       '<span style="color:#7a7880;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + pending[i].n + '</span>' +
-      '<span style="color:#f0ede8;font-family:\'DM Mono\',monospace;font-size:12px;flex-shrink:0">' + fmt(pending[i].m) + '</span></div>';
+      '<span style="color:#f0ede8;font-family:\'DM Mono\',monospace;font-size:12px;flex-shrink:0">' + fmt(val) + '</span></div>';
   }
   document.getElementById('debo-legend').innerHTML = legend || '<span style="color:var(--mu)">Sin deudas pendientes</span>';
+
+  // Evolution line chart — all deudas.debo with cambios
+  var allDeudas = deudas.debo;
+  var evolDatasets = [];
+  for (var i = 0; i < allDeudas.length; i++) {
+    var d = allDeudas[i];
+    if (!d.abonos || d.abonos.length === 0) continue;
+    var pts = [{n: 'Inicial', m: d.m}].concat(d.abonos);
+    evolDatasets.push({
+      label: d.n,
+      data: pts.map(function(p) { return p.m; }),
+      labels: pts.map(function(p) { return p.n; }),
+      borderColor: D_COLORS[i % D_COLORS.length],
+      backgroundColor: D_COLORS[i % D_COLORS.length] + '22',
+      tension: 0.4, fill: false, pointRadius: 4, pointHoverRadius: 6, borderWidth: 2
+    });
+  }
+  var ctxEvol = document.getElementById('ch-deuda-evol');
+  if (chDeudaEvol) { chDeudaEvol.destroy(); chDeudaEvol = null; }
+  if (evolDatasets.length) {
+    var maxPts = 0;
+    for (var i = 0; i < evolDatasets.length; i++) if (evolDatasets[i].data.length > maxPts) maxPts = evolDatasets[i].data.length;
+    var labels = [];
+    for (var i = 0; i < maxPts; i++) labels.push(i === 0 ? 'Inicial' : 'Cambio ' + i);
+    chDeudaEvol = new Chart(ctxEvol, {
+      type: 'line',
+      data: {labels: labels, datasets: evolDatasets},
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: {legend: {display: false}, tooltip: {callbacks: {
+          label: function(c) { return c.dataset.label + ': ' + fmt(c.raw); },
+          title: function(items) {
+            var ds = items[0].dataset;
+            return ds.labels && ds.labels[items[0].dataIndex] ? ds.labels[items[0].dataIndex] : items[0].label;
+          }
+        }}},
+        scales: {
+          y: {ticks: {color: '#7a7880', font: {size: 10}, callback: function(v) { return fmt(v); }}, grid: {color: 'rgba(255,255,255,0.05)'}, border: {display: false}},
+          x: {ticks: {color: '#7a7880', font: {size: 11}}, grid: {display: false}, border: {display: false}}
+        }
+      }
+    });
+    var eLegend = '';
+    for (var i = 0; i < evolDatasets.length; i++) {
+      eLegend += '<span style="display:flex;align-items:center;gap:5px;color:#7a7880;font-size:11px">' +
+        '<span style="width:10px;height:10px;border-radius:50%;background:' + D_COLORS[i % D_COLORS.length] + ';flex-shrink:0"></span>' + evolDatasets[i].label + '</span>';
+    }
+    document.getElementById('deuda-evol-legend').innerHTML = eLegend;
+  } else {
+    document.getElementById('deuda-evol-legend').innerHTML = '<span style="font-size:12px;color:var(--mu)">Registra cambios en tus deudas para ver la evolución</span>';
+  }
 
   document.getElementById('dl-debo').innerHTML  = deudaRows(deudas.debo, 'debo');
   document.getElementById('dl-deben').innerHTML = deudaRows(deudas.deben, 'deben');
@@ -842,14 +935,68 @@ function deudaRows(list, tipo) {
   if (!list.length) return '<div style="color:var(--mu);font-size:14px;padding:8px 0">Sin registros</div>';
   var html = '';
   for (var i = 0; i < list.length; i++) {
-    var d = list[i];
-    var cls = tipo === 'debo' ? (d.paid ? 'm' : 'r') : (d.paid ? 'm' : 'g');
-    html += '<div class="drow">' +
-      '<div class="di"><div class="dn" style="' + (d.paid ? 'opacity:.5' : '') + '">' + d.n + '</div></div>' +
-      '<div class="da ' + cls + '">' + fmt(d.m) + '</div>' +
-      '<span class="' + (d.paid ? 'pbadge' : 'ubadge') + '" onclick="toggleDeuda(\'' + tipo + '\',\'' + d.id + '\')">' + (d.paid ? 'Pagada' : 'Pendiente') + '</span>' +
-      '<button class="xbtn" onclick="deleteDeuda(\'' + tipo + '\',\'' + d.id + '\')">✕</button>' +
-      '</div>';
+    var d      = list[i];
+    var valAct = deudaValActual(d);
+    var valAnt = (d.abonos && d.abonos.length > 1) ? d.abonos[d.abonos.length - 2].m : d.m;
+    var delta  = (d.abonos && d.abonos.length) ? valAct - valAnt : 0;
+    var deltaStr = delta === 0 ? '' : (delta < 0
+      ? '<span style="font-size:11px;color:var(--gr);margin-left:4px">▼ ' + fmt(Math.abs(delta)) + '</span>'
+      : '<span style="font-size:11px;color:var(--re);margin-left:4px">▲ ' + fmt(delta) + '</span>');
+    var cls    = tipo === 'debo' ? (d.paid ? 'm' : 'r') : (d.paid ? 'm' : 'g');
+    var barClr = tipo === 'debo' ? '#ff5c5c' : '#3dd68c';
+    var pct    = d.m ? Math.min(100, Math.round((1 - valAct / d.m) * 100)) : 0;
+
+    // cambios history
+    var cambiosHtml = '';
+    if (d.abonos && d.abonos.length) {
+      cambiosHtml += '<div style="margin-top:8px;padding:8px 0 0;border-top:1px solid var(--bd)">';
+      var prev = d.m;
+      for (var j = 0; j < d.abonos.length; j++) {
+        var ab   = d.abonos[j];
+        var diff = ab.m - prev;
+        var diffStr = diff < 0
+          ? '<span style="color:var(--gr);font-size:11px">▼ ' + fmt(Math.abs(diff)) + '</span>'
+          : diff > 0
+            ? '<span style="color:var(--re);font-size:11px">▲ ' + fmt(diff) + '</span>'
+            : '<span style="color:var(--mu);font-size:11px">sin cambio</span>';
+        cambiosHtml += '<div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0">' +
+          '<div><div style="font-size:12px;color:var(--mu)">' + ab.n + '</div>' + diffStr + '</div>' +
+          '<div style="display:flex;align-items:center;gap:8px">' +
+          '<span style="font-size:13px;font-family:\'DM Mono\',monospace;color:var(--tx)">' + fmt(ab.m) + '</span>' +
+          '<button class="xbtn" style="padding:2px 6px;font-size:11px" onclick="deleteAbono(\'' + tipo + '\',\'' + d.id + '\',\'' + ab.id + '\')">✕</button>' +
+          '</div></div>';
+        prev = ab.m;
+      }
+      cambiosHtml += '</div>';
+    }
+
+    html += '<div class="drow" style="flex-direction:column;align-items:stretch;gap:8px;padding:14px 0">' +
+      '<div style="display:flex;align-items:center;gap:8px">' +
+        '<div class="di">' +
+          '<div style="display:flex;align-items:center">' +
+            '<div class="dn" style="' + (d.paid ? 'opacity:.5' : '') + '">' + d.n + '</div>' +
+            deltaStr +
+          '</div>' +
+          (!d.paid ? '<div style="font-size:10px;color:var(--mu);margin-top:2px">Original: ' + fmt(d.m) + '</div>' : '') +
+        '</div>' +
+        '<div class="da ' + cls + '" style="' + (d.paid ? 'text-decoration:line-through' : '') + '">' + fmt(valAct) + '</div>' +
+        (d.paid
+          ? '<span class="pbadge" onclick="toggleDeuda(\'' + tipo + '\',\'' + d.id + '\')">Pagada</span>'
+          : '<button class="arb" style="font-size:11px;padding:3px 8px;border-color:' + barClr + '44;color:' + barClr + '" onclick="openAddAbono(\'' + tipo + '\',\'' + d.id + '\')">± Cambio</button>' +
+            '<span class="ubadge" onclick="toggleDeuda(\'' + tipo + '\',\'' + d.id + '\')">Pendiente</span>'
+        ) +
+        '<button class="xbtn" onclick="deleteDeuda(\'' + tipo + '\',\'' + d.id + '\')">✕</button>' +
+      '</div>' +
+      (!d.paid && d.abonos && d.abonos.length ? '<div>' +
+        '<div style="display:flex;justify-content:space-between;font-size:10px;color:var(--mu);margin-bottom:4px">' +
+          '<span>Reducción acumulada</span><span>' + pct + '%</span>' +
+        '</div>' +
+        '<div style="width:100%;height:5px;background:var(--sf2);border-radius:3px;overflow:hidden">' +
+          '<div style="height:100%;width:' + pct + '%;background:' + barClr + ';border-radius:3px;transition:width .3s"></div>' +
+        '</div>' +
+      '</div>' : '') +
+      cambiosHtml +
+    '</div>';
   }
   return html;
 }
@@ -864,6 +1011,55 @@ function toggleDeuda(tipo, id) {
 function deleteDeuda(tipo, id) {
   if (!confirm('¿Borrar?')) return;
   deudas[tipo] = deudas[tipo].filter(function(d) { return d.id !== id; });
+  saveDeudas(); renderDeudas();
+}
+
+function openAddAbono(tipo, id) {
+  var list = deudas[tipo];
+  var d = null;
+  for (var i = 0; i < list.length; i++) { if (list[i].id === id) { d = list[i]; break; } }
+  if (!d) return;
+  var valAct = deudaValActual(d);
+  document.getElementById('ab-title').textContent = '± Cambio · ' + d.n;
+  document.getElementById('ab-saldo').textContent = fmt(valAct);
+  document.getElementById('ab-tipo').value = tipo;
+  document.getElementById('ab-did').value  = id;
+  document.getElementById('ab-n').value    = '';
+  document.getElementById('ab-m').value    = '';
+  document.getElementById('ov-ab').classList.add('on');
+  setTimeout(function() { document.getElementById('ab-n').focus(); }, 100);
+}
+
+function saveAbono() {
+  var n    = document.getElementById('ab-n').value.trim();
+  var m    = parseInt(document.getElementById('ab-m').value);
+  var tipo = document.getElementById('ab-tipo').value;
+  var did  = document.getElementById('ab-did').value;
+  if (!n || !m) { alert('Completa todos los campos.'); return; }
+  var list = deudas[tipo];
+  for (var i = 0; i < list.length; i++) {
+    if (list[i].id === did) {
+      if (!list[i].abonos) list[i].abonos = [];
+      list[i].abonos.push({id: uid(), n: n, m: m});
+      if (m === 0) list[i].paid = true;
+      break;
+    }
+  }
+  saveDeudas();
+  document.getElementById('ab-n').value = '';
+  document.getElementById('ab-m').value = '';
+  closeModal('ov-ab'); renderDeudas();
+}
+
+function deleteAbono(tipo, did, aid) {
+  var list = deudas[tipo];
+  for (var i = 0; i < list.length; i++) {
+    if (list[i].id === did) {
+      list[i].abonos = (list[i].abonos || []).filter(function(a) { return a.id !== aid; });
+      list[i].paid   = false;
+      break;
+    }
+  }
   saveDeudas(); renderDeudas();
 }
 
