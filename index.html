@@ -104,6 +104,34 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--tx);min-h
 .pbadge{font-size:10px;background:var(--pbg);color:var(--gr);border:1px solid var(--pbd);border-radius:6px;padding:3px 7px;cursor:pointer;white-space:nowrap;flex-shrink:0}
 .ubadge{font-size:10px;background:var(--sf2);color:var(--mu);border:1px solid var(--bd);border-radius:6px;padding:3px 7px;cursor:pointer;white-space:nowrap;flex-shrink:0}
 
+/* SETTINGS MODAL */
+.cfg-btn{display:flex;align-items:center;gap:14px;width:100%;background:var(--sf2);border:1px solid var(--bd);border-radius:16px;padding:16px;margin-bottom:10px;cursor:pointer;font-family:'DM Sans',sans-serif;color:var(--tx);text-align:left}
+.cfg-btn:last-child{margin-bottom:0}
+.cfg-icon{width:40px;height:40px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0}
+.cfg-info-title{font-size:14px;font-weight:600}
+.cfg-info-sub{font-size:12px;color:var(--mu);margin-top:2px}
+.cfg-import-result{margin-top:12px;font-size:13px;padding:10px 14px;border-radius:10px;display:none}
+.cfg-import-result.ok{background:var(--pbg);border:1px solid var(--pbd);color:var(--gr)}
+.cfg-import-result.err{background:rgba(255,92,92,.1);border:1px solid rgba(255,92,92,.3);color:var(--re)}
+.bolsillo-hero{background:var(--sf);border:1px solid var(--bd);border-radius:22px;padding:20px;margin-bottom:14px;text-align:center}
+.bh-label{font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--mu);margin-bottom:6px}
+.bh-queda{font-size:36px;font-weight:600;font-family:'DM Mono',monospace;margin-bottom:4px}
+.bh-queda.ok{color:var(--gr)}.bh-queda.warn{color:var(--ac)}.bh-queda.over{color:var(--re)}
+.bh-sub{font-size:13px;color:var(--mu);margin-bottom:16px}
+.bh-track{width:100%;height:8px;background:var(--sf2);border-radius:4px;overflow:hidden;margin-bottom:8px}
+.bh-fill{height:100%;border-radius:4px;transition:width .4s}
+.bh-fill.ok{background:var(--gr)}.bh-fill.warn{background:var(--ac)}.bh-fill.over{background:var(--re)}
+.bh-pct{font-size:11px;color:var(--mu)}
+.diario-stats{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px}
+.ds-card{background:var(--sf);border:1px solid var(--bd);border-radius:16px;padding:14px}
+.ds-label{font-size:11px;color:var(--mu);margin-bottom:6px}
+.ds-val{font-size:17px;font-weight:600;font-family:'DM Mono',monospace}
+.drow2{display:flex;align-items:center;gap:12px;padding:11px 0;border-bottom:1px solid var(--bd)}
+.drow2:last-child{border-bottom:none}
+.drow2-name{flex:1;font-size:14px;font-weight:500;color:var(--tx)}
+.drow2-amt{font-size:14px;font-weight:500;font-family:'DM Mono',monospace;color:var(--re);flex-shrink:0}
+.dreset-btn{background:transparent;border:1px solid var(--bd);border-radius:100px;color:var(--mu);font-size:12px;font-family:'DM Sans',sans-serif;padding:5px 12px;cursor:pointer}
+
 /* INGRESOS */
 .ing-total{background:var(--sf2);border-radius:14px;padding:14px 16px;margin-bottom:14px;display:flex;justify-content:space-between;align-items:center}
 .ing-total-label{font-size:12px;color:var(--mu)}
@@ -148,7 +176,10 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--tx);min-h
   <div class="gh">
     <div class="ht">
       <div class="mpill" onclick="openMPicker()"><span id="mlabel">Abril</span><div class="marr">▾</div></div>
-      <button class="rbtn" onclick="doReset()">Nuevo mes →</button>
+      <div style="display:flex;gap:8px;align-items:center">
+        <button class="rbtn" onclick="doReset()">Nuevo mes →</button>
+        <button class="rbtn" onclick="openSettings()" style="padding:7px 10px;font-size:16px" aria-label="Configuración">⚙️</button>
+      </div>
     </div>
     <div class="sg">
       <div class="sc"><div class="sl">Pagado</div><div class="sv g" id="sp">$0</div></div>
@@ -247,6 +278,40 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--tx);min-h
   </div>
 </div>
 
+<!-- PAGE: DIARIO -->
+<div class="pg" id="pg-diario">
+  <div class="pc">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
+      <div class="ptitle" style="margin-bottom:0">Bolsillo salidas</div>
+      <button class="dreset-btn" onclick="resetDiario()">Reiniciar</button>
+    </div>
+    <div class="bolsillo-hero">
+      <div class="bh-label">Disponible</div>
+      <div class="bh-queda" id="bh-queda">$0</div>
+      <div class="bh-sub" id="bh-sub">de $500k del mes</div>
+      <div class="bh-track"><div class="bh-fill ok" id="bh-fill" style="width:100%"></div></div>
+      <div class="bh-pct" id="bh-pct">0% usado</div>
+    </div>
+    <div class="diario-stats">
+      <div class="ds-card">
+        <div class="ds-label">Gastado hoy</div>
+        <div class="ds-val" style="color:var(--re)" id="ds-hoy">$0</div>
+      </div>
+      <div class="ds-card">
+        <div class="ds-label">Total gastado</div>
+        <div class="ds-val" style="color:var(--ac)" id="ds-total">$0</div>
+      </div>
+    </div>
+    <div class="scard">
+      <div class="sct">
+        <span>Movimientos</span>
+        <button class="arb" onclick="openAddDiario()">+ Agregar</button>
+      </div>
+      <div id="diario-list"></div>
+    </div>
+  </div>
+</div>
+
 <!-- BOTTOM NAV -->
 <nav class="bnav">
   <button class="nb on" id="nb-gastos" onclick="goTo('gastos')">
@@ -269,7 +334,59 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--tx);min-h
     <svg viewBox="0 0 24 24"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
     Ingresos
   </button>
+  <button class="nb" id="nb-diario" onclick="goTo('diario')">
+    <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+    Diario
+  </button>
 </nav>
+
+<!-- MODAL: Configuración / Backup -->
+<div class="ov" id="ov-cfg" onclick="closeModal('ov-cfg',event)">
+  <div class="mo">
+    <div class="mh"></div>
+    <h3>Datos y respaldo</h3>
+
+    <button class="cfg-btn" onclick="exportData()">
+      <div class="cfg-icon" style="background:rgba(61,214,140,.12)">📤</div>
+      <div>
+        <div class="cfg-info-title">Exportar mis datos</div>
+        <div class="cfg-info-sub">Descarga un archivo .json con todo</div>
+      </div>
+    </button>
+
+    <button class="cfg-btn" onclick="document.getElementById('import-file').click()">
+      <div class="cfg-icon" style="background:rgba(79,142,247,.12)">📥</div>
+      <div>
+        <div class="cfg-info-title">Importar datos</div>
+        <div class="cfg-info-sub">Carga un respaldo desde otro equipo</div>
+      </div>
+    </button>
+    <input type="file" id="import-file" accept=".json" style="display:none" onchange="importData(event)">
+    <div class="cfg-import-result" id="import-result"></div>
+
+    <button class="cfg-btn" onclick="confirmWipe()" style="margin-top:6px">
+      <div class="cfg-icon" style="background:rgba(255,92,92,.1)">🗑️</div>
+      <div>
+        <div class="cfg-info-title" style="color:var(--re)">Borrar todo</div>
+        <div class="cfg-info-sub">Elimina todos los datos guardados</div>
+      </div>
+    </button>
+  </div>
+</div>
+
+<!-- MODAL: Gasto diario -->
+<div class="ov" id="ov-di" onclick="closeModal('ov-di',event)">
+  <div class="mo">
+    <div class="mh"></div>
+    <h3>Gasto del bolsillo</h3>
+    <div class="fi"><label>Concepto</label><input id="di-n" type="text" placeholder="Ej: Almuerzo, taxi, helado..."></div>
+    <div class="fi"><label>Monto (COP)</label><input id="di-m" type="number" placeholder="0" inputmode="numeric"></div>
+    <div class="mbtns">
+      <button class="bcx" onclick="closeModal('ov-di')">Cancelar</button>
+      <button class="bsv" onclick="saveDiario()">Guardar</button>
+    </div>
+  </div>
+</div>
 
 <!-- MODAL: Agregar gasto -->
 <div class="ov" id="ov-ag" onclick="closeModal('ov-ag',event)">
@@ -463,6 +580,7 @@ function goTo(page) {
   if (page === 'ahorros')  renderAhorros();
   if (page === 'deudas')   renderDeudas();
   if (page === 'ingresos') renderIngresos();
+  if (page === 'diario')   renderDiario();
 }
 
 // ── GASTOS ──
@@ -909,7 +1027,106 @@ function saveIngreso() {
   closeModal('ov-ai'); renderIngresos();
 }
 
-// ── RESET ──
+var DI_KEY = 'gv6_diario';
+var BOLSILLO_TOTAL = 500000;
+
+var diario = lsGet(DI_KEY) || {gastos: [], hoy: []};
+function saveDiario2() { lsSet(DI_KEY, diario); }
+
+// ── DIARIO ──
+function renderDiario() {
+  var gastos     = diario.gastos || [];
+  var hoy        = diario.hoy || [];
+  var totalMes   = gastos.reduce(function(s, g) { return s + g.m; }, 0);
+  var totalHoy   = hoy.reduce(function(s, g) { return s + g.m; }, 0);
+  var queda      = BOLSILLO_TOTAL - totalMes;
+  var pct        = Math.min(100, Math.round(totalMes / BOLSILLO_TOTAL * 100));
+  var cls        = queda > 150000 ? 'ok' : queda > 0 ? 'warn' : 'over';
+
+  document.getElementById('bh-queda').textContent = fmt(Math.max(0, queda));
+  document.getElementById('bh-queda').className   = 'bh-queda ' + cls;
+  document.getElementById('bh-sub').textContent   = 'de ' + fmt(BOLSILLO_TOTAL) + ' del mes';
+  document.getElementById('bh-fill').style.width  = (100 - pct) + '%';
+  document.getElementById('bh-fill').className    = 'bh-fill ' + cls;
+  document.getElementById('bh-pct').textContent   = pct + '% usado · ' + fmt(totalMes) + ' gastados';
+  document.getElementById('ds-hoy').textContent   = fmt(totalHoy);
+  document.getElementById('ds-total').textContent = fmt(totalMes);
+
+  var todos = gastos.concat(hoy);
+  var html  = '';
+  if (!todos.length) {
+    html = '<div class="emp" style="padding:20px 0">Sin gastos registrados aún.</div>';
+  } else {
+    // show hoy first if any
+    if (hoy.length) {
+      html += '<div class="sl2">Hoy · ' + fmt(totalHoy) + '</div>';
+      for (var i = hoy.length - 1; i >= 0; i--) {
+        var g = hoy[i];
+        html += '<div class="drow2">' +
+          '<div class="drow2-name">' + g.n + '</div>' +
+          '<div class="drow2-amt">-' + fmt(g.m) + '</div>' +
+          '<button class="xbtn" onclick="deleteDiarioHoy(\'' + g.id + '\')">✕</button>' +
+          '</div>';
+      }
+    }
+    if (gastos.length) {
+      html += '<div class="sl2" style="margin-top:' + (hoy.length ? '18px' : '0') + '">Anteriores · ' + fmt(totalMes) + '</div>';
+      for (var i = gastos.length - 1; i >= 0; i--) {
+        var g = gastos[i];
+        html += '<div class="drow2">' +
+          '<div class="drow2-name">' + g.n + '</div>' +
+          '<div class="drow2-amt">-' + fmt(g.m) + '</div>' +
+          '<button class="xbtn" onclick="deleteDiario(\'' + g.id + '\')">✕</button>' +
+          '</div>';
+      }
+    }
+  }
+  document.getElementById('diario-list').innerHTML = html;
+}
+
+function openAddDiario() {
+  document.getElementById('ov-di').classList.add('on');
+  setTimeout(function() { document.getElementById('di-n').focus(); }, 100);
+}
+
+function saveDiario() {
+  var n = document.getElementById('di-n').value.trim();
+  var m = parseInt(document.getElementById('di-m').value);
+  if (!n || !m) { alert('Completa todos los campos.'); return; }
+  diario.hoy = diario.hoy || [];
+  diario.hoy.push({id: uid(), n: n, m: m});
+  saveDiario2();
+  document.getElementById('di-n').value = '';
+  document.getElementById('di-m').value = '';
+  closeModal('ov-di');
+  renderDiario();
+}
+
+function deleteDiarioHoy(id) {
+  diario.hoy = (diario.hoy || []).filter(function(g) { return g.id !== id; });
+  saveDiario2(); renderDiario();
+}
+
+function deleteDiario(id) {
+  diario.gastos = (diario.gastos || []).filter(function(g) { return g.id !== id; });
+  saveDiario2(); renderDiario();
+}
+
+function resetDiario() {
+  var op = confirm('¿Cerrar el día actual y pasar los gastos de hoy al historial?\nOK = cerrar día · Cancelar = borrar TODO');
+  if (op) {
+    // move hoy to gastos history
+    diario.gastos = (diario.gastos || []).concat(diario.hoy || []);
+    diario.hoy = [];
+  } else {
+    if (!confirm('¿Borrar TODOS los gastos del bolsillo y empezar desde cero?')) return;
+    diario.gastos = [];
+    diario.hoy = [];
+  }
+  saveDiario2(); renderDiario();
+}
+
+// ── DIARIO nav hook ──
 function doReset() {
   var copy = confirm('¿Copiar gastos de "' + cur + '" al nuevo mes?\nOK = copiar · Cancelar = empezar en blanco');
   var name = prompt('Nombre del nuevo mes:');
@@ -927,6 +1144,67 @@ function closeModal(id, e) {
   if (!e || e.target === document.getElementById(id)) {
     document.getElementById(id).classList.remove('on');
   }
+}
+
+// ── SETTINGS ──
+function openSettings() { document.getElementById('ov-cfg').classList.add('on'); }
+
+function exportData() {
+  var backup = {
+    version: 1,
+    exportedAt: new Date().toISOString(),
+    months:   months,
+    ahorros:  ahorros,
+    deudas:   deudas,
+    ingresos: ingresos,
+    diario:   diario
+  };
+  var blob = new Blob([JSON.stringify(backup, null, 2)], {type: 'application/json'});
+  var url  = URL.createObjectURL(blob);
+  var a    = document.createElement('a');
+  var date = new Date().toLocaleDateString('es-CO').replace(/\//g, '-');
+  a.href     = url;
+  a.download = 'mis-gastos-' + date + '.json';
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function importData(event) {
+  var file   = event.target.files[0];
+  var result = document.getElementById('import-result');
+  if (!file) return;
+  var reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      var data = JSON.parse(e.target.result);
+      if (!data.months || !data.ahorros || !data.deudas) throw new Error('Archivo inválido');
+      months   = data.months;
+      ahorros  = data.ahorros;
+      deudas   = data.deudas;
+      ingresos = data.ingresos || ingresos;
+      diario   = data.diario   || {gastos:[], hoy:[]};
+      cur      = Object.keys(months)[0];
+      saveMonths(); saveAhorros(); saveDeudas(); saveIngresos(); saveDiario2();
+      lsSet(CK, cur);
+      result.className   = 'cfg-import-result ok';
+      result.textContent = '✓ Datos importados correctamente. Recargando...';
+      result.style.display = 'block';
+      setTimeout(function() { location.reload(); }, 1500);
+    } catch(err) {
+      result.className   = 'cfg-import-result err';
+      result.textContent = '✕ Error: el archivo no es válido. Asegúrate de usar un respaldo exportado desde esta app.';
+      result.style.display = 'block';
+    }
+  };
+  reader.readAsText(file);
+  event.target.value = '';
+}
+
+function confirmWipe() {
+  if (!confirm('¿Borrar TODOS los datos? Esta acción no se puede deshacer.')) return;
+  if (!confirm('¿Estás seguro? Se borrarán gastos, ahorros, deudas e ingresos.')) return;
+  [MK, CK, AK, DK, IK, DI_KEY].forEach(function(k) { localStorage.removeItem(k); });
+  location.reload();
 }
 
 // ── INIT ──
